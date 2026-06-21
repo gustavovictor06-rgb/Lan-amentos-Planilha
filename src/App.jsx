@@ -1,52 +1,32 @@
 import { useState } from "react";
 
-const SHEET_ID  = "1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI";
-const API_KEY   = "AIzaSyBvLNKfqrFpv0CAg8Qz61B0cYLwp4FXxss";
-const SHEET_NAME = "Sheet1";
-const HEADERS = ["DATA","UC","COLABORADOR","SOLICITAÇÃO","PARCELAS","DATA DE VENCIMENTO / 1ª PARCELA","INTERVALO","JUROS","UNIFICADO","INCRED","OBSERVAÇÕES","STATUS"];
-
-async function garantirCabecalho() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1:L1?key=${API_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  const temCabecalho = data.values && data.values[0] && data.values[0][0] === "DATA";
-  if (!temCabecalho) {
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1:L1?valueInputOption=RAW&key=${API_KEY}`,
-      { method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ values: [HEADERS] }) }
-    );
-  }
-}
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz0iVbyZxwTKIFISvE8KxdI4MGCBECEIkTQJT9OSC0anjoW5-lGyQPZ9vd5NNkbUaRM-A/exec";
+const SHEET_ID   = "1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI";
 
 async function enviarParaSheets(form) {
-  await garantirCabecalho();
-  const linha = [
-    form.data, form.uc, form.colaborador, form.solicitacao,
-    form.solicitacao === "Atualização" ? "0" : form.parcelas,
-    form.vencimento,
-    form.solicitacao === "Parcelamento" ? form.intervalo : "—",
-    form.juros, form.unificado, form.incred,
-    form.observacoes || "—", "Não feito",
-  ];
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1:L1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&key=${API_KEY}`,
-    { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ values: [linha] }) }
-  );
-  if (!res.ok) throw new Error("Erro ao salvar na planilha.");
+  const dados = {
+    data: form.data, uc: form.uc, colaborador: form.colaborador,
+    solicitacao: form.solicitacao,
+    parcelas: form.solicitacao === "Atualização" ? "0" : form.parcelas,
+    vencimento: form.vencimento,
+    intervalo: form.solicitacao === "Parcelamento" ? form.intervalo : "—",
+    juros: form.juros, unificado: form.unificado, incred: form.incred,
+    observacoes: form.observacoes || "—",
+  };
+  const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(dados) });
+  const json = await res.json();
+  if (!json.success) throw new Error("Erro ao salvar na planilha.");
 }
 
 const T = {
   bg: "#0a0a0a", card: "#141414", cardBorda: "#1e1e1e",
   surface: "#1a1a1a", surface2: "#222222",
-  verde: "#1a5c20", verdeVivo: "#22c55e", verdeMid: "#166534",
+  verde: "#1a5c20", verdeVivo: "#22c55e",
   txt: "#f0f0f0", txtSub: "#888888", txtMute: "#555555",
   borda: "#2a2a2a", inputBg: "#111111", inputBorda: "#333333", erro: "#ef4444",
 };
 
 const PASSOS = ["Identificação", "Financeiro", "Datas", "Revisão"];
-const INTERVALOS = ["7 dias","15 dias","30 dias","60 dias","90 dias"];
 const VAZIO = { data:"",uc:"",colaborador:"",solicitacao:"",parcelas:"",vencimento:"",intervalo:"",juros:"",unificado:"",incred:"",observacoes:"" };
 
 function ProgressBar({ passo }) {
@@ -55,17 +35,10 @@ function ProgressBar({ passo }) {
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
         {PASSOS.map((p,i) => (
           <div key={p} style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1 }}>
-            <div style={{
-              width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:13, fontWeight:700, transition:"all .3s",
-              background: i < passo ? T.verde : i === passo ? T.verdeVivo : T.surface2,
-              color: i <= passo ? "#fff" : T.txtMute,
-              boxShadow: i === passo ? "0 0 0 4px rgba(34,197,94,.18)" : "none",
-              border: i === passo ? `2px solid ${T.verdeVivo}` : "2px solid transparent",
-            }}>
-              {i < passo ? "✓" : i+1}
+            <div style={{ width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, transition:"all .3s", background: i<passo?T.verde:i===passo?T.verdeVivo:T.surface2, color:i<=passo?"#fff":T.txtMute, boxShadow:i===passo?"0 0 0 4px rgba(34,197,94,.18)":"none", border:i===passo?`2px solid ${T.verdeVivo}`:"2px solid transparent" }}>
+              {i<passo?"✓":i+1}
             </div>
-            <span style={{ fontSize:10, marginTop:5, color: i===passo ? T.verdeVivo : i<passo ? "#4ade80" : T.txtMute, fontWeight: i===passo?700:400, textAlign:"center" }}>{p}</span>
+            <span style={{ fontSize:10, marginTop:5, color:i===passo?T.verdeVivo:i<passo?"#4ade80":T.txtMute, fontWeight:i===passo?700:400, textAlign:"center" }}>{p}</span>
           </div>
         ))}
       </div>
@@ -92,13 +65,7 @@ function Campo({ label, obrigatorio, dica, erro, children }) {
 const inputStyle = { width:"100%", padding:"10px 12px", borderRadius:8, border:`1.5px solid ${T.inputBorda}`, fontSize:14, outline:"none", boxSizing:"border-box", background:T.inputBg, fontFamily:"inherit", color:T.txt };
 
 function Input({ value, onChange, type="text", placeholder, ...rest }) {
-  return (
-    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-      style={inputStyle}
-      onFocus={e=>e.target.style.borderColor=T.verdeVivo}
-      onBlur={e=>e.target.style.borderColor=T.inputBorda}
-      {...rest} />
-  );
+  return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={inputStyle} onFocus={e=>e.target.style.borderColor=T.verdeVivo} onBlur={e=>e.target.style.borderColor=T.inputBorda} {...rest} />;
 }
 
 function Select({ value, onChange, options }) {
@@ -111,30 +78,13 @@ function Select({ value, onChange, options }) {
 }
 
 function Alerta({ tipo, children }) {
-  const map = {
-    info:    { bg:"#0d1f0d", borda:"#166534", cor:"#4ade80", icon:"ℹ" },
-    aviso:   { bg:"#1a1000", borda:"#78350f", cor:"#fbbf24", icon:"⚠" },
-    sucesso: { bg:"#052e16", borda:"#166534", cor:"#4ade80", icon:"✓" },
-    erro:    { bg:"#1f0000", borda:"#7f1d1d", cor:"#f87171", icon:"✗" },
-  };
+  const map = { info:{bg:"#0d1f0d",borda:"#166534",cor:"#4ade80",icon:"ℹ"}, aviso:{bg:"#1a1000",borda:"#78350f",cor:"#fbbf24",icon:"⚠"}, sucesso:{bg:"#052e16",borda:"#166534",cor:"#4ade80",icon:"✓"}, erro:{bg:"#1f0000",borda:"#7f1d1d",cor:"#f87171",icon:"✗"} };
   const s = map[tipo];
-  return (
-    <div style={{ background:s.bg, border:`1.5px solid ${s.borda}`, borderRadius:8, padding:"10px 14px", color:s.cor, fontSize:13, display:"flex", gap:8, marginBottom:14 }}>
-      <span style={{ fontWeight:700, flexShrink:0 }}>{s.icon}</span>
-      <span>{children}</span>
-    </div>
-  );
+  return <div style={{ background:s.bg, border:`1.5px solid ${s.borda}`, borderRadius:8, padding:"10px 14px", color:s.cor, fontSize:13, display:"flex", gap:8, marginBottom:14 }}><span style={{ fontWeight:700, flexShrink:0 }}>{s.icon}</span><span>{children}</span></div>;
 }
 
 function BotaoOpcao({ selecionado, onClick, children }) {
-  return (
-    <button onClick={onClick} style={{
-      padding:"12px 8px", borderRadius:8, fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s",
-      border: selecionado ? `2px solid ${T.verdeVivo}` : `2px solid ${T.borda}`,
-      background: selecionado ? "#0d2e10" : T.surface,
-      color: selecionado ? T.verdeVivo : T.txtSub,
-    }}>{children}</button>
-  );
+  return <button onClick={onClick} style={{ padding:"12px 8px", borderRadius:8, fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s", border:selecionado?`2px solid ${T.verdeVivo}`:`2px solid ${T.borda}`, background:selecionado?"#0d2e10":T.surface, color:selecionado?T.verdeVivo:T.txtSub }}>{children}</button>;
 }
 
 export default function App() {
@@ -154,8 +104,7 @@ export default function App() {
       if (!form.solicitacao) e.solicitacao = "Selecione o tipo de solicitação.";
     }
     if (passo===1) {
-      if (form.solicitacao==="Parcelamento" && (!form.parcelas||isNaN(form.parcelas)||Number(form.parcelas)<1))
-        e.parcelas = "Informe o número de parcelas (mín. 1).";
+      if (form.solicitacao==="Parcelamento" && (!form.parcelas||isNaN(form.parcelas)||Number(form.parcelas)<1)) e.parcelas = "Informe o número de parcelas (mín. 1).";
       if (!form.juros)     e.juros     = "Informe se haverá juros.";
       if (!form.unificado) e.unificado = "Informe se é unificado.";
       if (!form.incred)    e.incred    = "Informe se é Incred.";
@@ -163,7 +112,7 @@ export default function App() {
     if (passo===2) {
       if (!form.data)       e.data       = "Informe a data do lançamento.";
       if (!form.vencimento) e.vencimento = form.solicitacao==="Atualização" ? "Informe a nova data de vencimento." : "Informe a data da primeira parcela.";
-      if (form.solicitacao==="Parcelamento" && !form.intervalo) e.intervalo = "Selecione o intervalo entre parcelas.";
+      if (form.solicitacao==="Parcelamento" && !form.intervalo) e.intervalo = "Informe o intervalo entre parcelas.";
     }
     setErros(e);
     return Object.keys(e).length===0;
@@ -174,13 +123,8 @@ export default function App() {
 
   async function salvar() {
     setStatus("salvando");
-    try {
-      await enviarParaSheets(form);
-      setStatus("sucesso");
-    } catch(err) {
-      setMsgErro(err.message || "Erro ao conectar com a planilha.");
-      setStatus("erro");
-    }
+    try { await enviarParaSheets(form); setStatus("sucesso"); }
+    catch(err) { setMsgErro(err.message||"Erro ao conectar."); setStatus("erro"); }
   }
 
   function novoLancamento() { setForm({...VAZIO}); setPasso(0); setStatus("idle"); setErros({}); }
@@ -191,8 +135,7 @@ export default function App() {
         <div style={{ fontSize:60, marginBottom:16 }}>✅</div>
         <h2 style={{ fontSize:22, fontWeight:800, color:T.txt, marginBottom:8 }}>Lançamento Enviado!</h2>
         <p style={{ color:T.txtSub, fontSize:14, marginBottom:24 }}>Os dados foram registrados automaticamente na planilha Google Sheets.</p>
-        <a href={`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`} target="_blank" rel="noreferrer"
-          style={{ display:"block", padding:"11px", borderRadius:10, background:"transparent", color:T.verdeVivo, fontWeight:700, fontSize:13, border:`2px solid ${T.verde}`, textDecoration:"none", marginBottom:12 }}>
+        <a href={`https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`} target="_blank" rel="noreferrer" style={{ display:"block", padding:"11px", borderRadius:10, background:"transparent", color:T.verdeVivo, fontWeight:700, fontSize:13, border:`2px solid ${T.verde}`, textDecoration:"none", marginBottom:12 }}>
           📊 Abrir Planilha Google Sheets
         </a>
         <button onClick={novoLancamento} style={{ width:"100%", padding:12, borderRadius:10, background:T.verdeVivo, color:"#000", fontWeight:700, fontSize:14, border:"none", cursor:"pointer" }}>
@@ -247,9 +190,7 @@ export default function App() {
                   <Input type="number" value={form.parcelas} onChange={v=>set("parcelas",v)} placeholder="1" min="1" />
                 </Campo>
               )}
-              {form.solicitacao==="Atualização" && (
-                <Alerta tipo="info">Atualização de vencimento — campo de parcelas não se aplica.</Alerta>
-              )}
+              {form.solicitacao==="Atualização" && <Alerta tipo="info">Atualização de vencimento — campo de parcelas não se aplica.</Alerta>}
               <Campo label="Haverá juros?" obrigatorio erro={erros.juros}>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                   <BotaoOpcao selecionado={form.juros==="Sim"} onClick={()=>set("juros","Sim")}>✓ Sim</BotaoOpcao>
@@ -265,9 +206,7 @@ export default function App() {
                 </Campo>
               </div>
               <Campo label="Observações" dica="Informações adicionais (opcional).">
-                <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)}
-                  placeholder="Ex: Cliente solicitou prazo estendido..."
-                  style={{ ...inputStyle, resize:"vertical", minHeight:70 }} />
+                <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Ex: Cliente solicitou prazo estendido..." style={{ ...inputStyle, resize:"vertical", minHeight:70 }} />
               </Campo>
             </div>
           )}
@@ -285,8 +224,8 @@ export default function App() {
               </div>
               {form.solicitacao==="Parcelamento" && (
                 <Campo label="Intervalo entre Parcelas (dias)" obrigatorio dica="Digite o número de dias entre cada parcela." erro={erros.intervalo}>
-  <Input type="number" value={form.intervalo} onChange={v=>set("intervalo",v)} placeholder="Ex: 30" min="1" />
-</Campo>
+                  <Input type="number" value={form.intervalo} onChange={v=>set("intervalo",v)} placeholder="Ex: 30" min="1" />
+                </Campo>
               )}
               <Alerta tipo="aviso">O status será registrado como <strong>Não feito</strong> automaticamente. O responsável atualizará na planilha.</Alerta>
             </div>
@@ -298,17 +237,17 @@ export default function App() {
               {status==="erro" && <Alerta tipo="erro">{msgErro}</Alerta>}
               <div style={{ background:T.surface, borderRadius:10, padding:16, marginBottom:14, border:`1px solid ${T.borda}` }}>
                 {[
-                  ["UC", form.uc], ["Colaborador", form.colaborador], ["Solicitação", form.solicitacao],
-                  ...(form.solicitacao==="Parcelamento" ? [["Parcelas",`${form.parcelas}x`],["Intervalo",form.intervalo]] : []),
-                  ["Juros", form.juros], ["Unificado", form.unificado], ["Incred", form.incred],
-                  ["Data do Lançamento", form.data],
-                  [form.solicitacao==="Atualização" ? "Nova Data de Vencimento" : "Data da 1ª Parcela", form.vencimento],
-                  ["Status", "Não feito (padrão)"],
+                  ["UC",form.uc],["Colaborador",form.colaborador],["Solicitação",form.solicitacao],
+                  ...(form.solicitacao==="Parcelamento"?[["Parcelas",`${form.parcelas}x`],["Intervalo",`${form.intervalo} dias`]]:[]),
+                  ["Juros",form.juros],["Unificado",form.unificado],["Incred",form.incred],
+                  ["Data do Lançamento",form.data],
+                  [form.solicitacao==="Atualização"?"Nova Data de Vencimento":"Data da 1ª Parcela",form.vencimento],
+                  ["Status","Não feito (padrão)"],
                   ...(form.observacoes?[["Observações",form.observacoes]]:[]),
                 ].map(([k,v])=>(
                   <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:13, borderBottom:`1px solid ${T.borda}`, padding:"7px 0", gap:8 }}>
                     <span style={{ color:T.txtSub, flexShrink:0 }}>{k}</span>
-                    <span style={{ fontWeight:600, color: k==="Status"?"#f87171":T.txt, textAlign:"right" }}>{v}</span>
+                    <span style={{ fontWeight:600, color:k==="Status"?"#f87171":T.txt, textAlign:"right" }}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -317,24 +256,17 @@ export default function App() {
 
           <div style={{ display:"flex", gap:12, marginTop:22 }}>
             {passo>0 && status!=="salvando" && (
-              <button onClick={voltar} style={{ flex:1, padding:12, borderRadius:10, border:`1.5px solid ${T.borda}`, background:"transparent", color:T.txtSub, fontWeight:600, fontSize:14, cursor:"pointer" }}>
-                ← Voltar
-              </button>
+              <button onClick={voltar} style={{ flex:1, padding:12, borderRadius:10, border:`1.5px solid ${T.borda}`, background:"transparent", color:T.txtSub, fontWeight:600, fontSize:14, cursor:"pointer" }}>← Voltar</button>
             )}
             {passo<PASSOS.length-1
-              ? <button onClick={avancar} style={{ flex:2, padding:12, borderRadius:10, background:T.verdeVivo, color:"#000", fontWeight:700, fontSize:14, border:"none", cursor:"pointer" }}>
-                  Continuar →
-                </button>
-              : <button onClick={salvar} disabled={status==="salvando"} style={{ flex:2, padding:12, borderRadius:10, background: status==="salvando" ? T.surface2 : T.verde, color:"#fff", fontWeight:700, fontSize:14, border:`1px solid ${T.verdeVivo}`, cursor: status==="salvando"?"not-allowed":"pointer", opacity: status==="salvando"?0.7:1 }}>
-                  {status==="salvando" ? "⏳ Enviando..." : "✓ Enviar para Planilha"}
+              ? <button onClick={avancar} style={{ flex:2, padding:12, borderRadius:10, background:T.verdeVivo, color:"#000", fontWeight:700, fontSize:14, border:"none", cursor:"pointer" }}>Continuar →</button>
+              : <button onClick={salvar} disabled={status==="salvando"} style={{ flex:2, padding:12, borderRadius:10, background:status==="salvando"?T.surface2:T.verde, color:"#fff", fontWeight:700, fontSize:14, border:`1px solid ${T.verdeVivo}`, cursor:status==="salvando"?"not-allowed":"pointer", opacity:status==="salvando"?0.7:1 }}>
+                  {status==="salvando"?"⏳ Enviando...":"✓ Enviar para Planilha"}
                 </button>
             }
           </div>
         </div>
-
-        <p style={{ textAlign:"center", fontSize:11, color:T.txtMute, marginTop:16 }}>
-          Os dados vão direto para o Google Sheets • Status atualizado pelo responsável
-        </p>
+        <p style={{ textAlign:"center", fontSize:11, color:T.txtMute, marginTop:16 }}>Os dados vão direto para o Google Sheets • Status atualizado pelo responsável</p>
       </div>
     </div>
   );
