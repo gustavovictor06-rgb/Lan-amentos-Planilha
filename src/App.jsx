@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUUlSfvDWDTW8RpXVehv-uOuw4Qa7a0dDeTWDTQQsFB9O4r4frsJbsr83r2uhJ8tLJOw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzl-ja73v_fLnlIc5iKB2c8aY7Ba9dhKkME7N_OxKdZa0B0qtn6mIojwIO4lVTvpbmoDw/exec";
 const SHEET_ID   = "1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI";
 
 async function enviarParaSheets(form) {
