@@ -284,13 +284,9 @@ export default function App() {
                 </Campo>
               </div>
               {form.solicitacao==="Parcelamento" && (
-                <Campo label="Intervalo entre Parcelas" obrigatorio dica="De quanto em quanto tempo vence cada parcela." erro={erros.intervalo}>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
-                    {INTERVALOS.map(op=>(
-                      <BotaoOpcao key={op} selecionado={form.intervalo===op} onClick={()=>set("intervalo",op)}>{op}</BotaoOpcao>
-                    ))}
-                  </div>
-                </Campo>
+                <Campo label="Intervalo entre Parcelas (dias)" obrigatorio dica="Digite o número de dias entre cada parcela." erro={erros.intervalo}>
+  <Input type="number" value={form.intervalo} onChange={v=>set("intervalo",v)} placeholder="Ex: 30" min="1" />
+</Campo>
               )}
               <Alerta tipo="aviso">O status será registrado como <strong>Não feito</strong> automaticamente. O responsável atualizará na planilha.</Alerta>
             </div>
