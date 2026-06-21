@@ -13,9 +13,12 @@ async function enviarParaSheets(form) {
     juros: form.juros, unificado: form.unificado, incred: form.incred,
     observacoes: form.observacoes || "—",
   };
-  const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(dados) });
-  const json = await res.json();
-  if (!json.success) throw new Error("Erro ao salvar na planilha.");
+ await fetch(SCRIPT_URL, {
+  method: "POST",
+  mode: "no-cors",
+  headers: { "Content-Type": "text/plain" },
+  body: JSON.stringify(dados),
+});
 }
 
 const T = {
