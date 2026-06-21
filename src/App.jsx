@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const sheet = SpreadsheetApp.openById("1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI").getSheetByName("Atualizar e Parcelar");
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUUlSfvDWDTW8RpXVehv-uOuw4Qa7a0dDeTWDTQQsFB9O4r4frsJbsr83r2uhJ8tLJOw/exec";
 const SHEET_ID   = "1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI";
 
 async function enviarParaSheets(form) {
