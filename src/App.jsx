@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzl-ja73v_fLnlIc5iKB2c8aY7Ba9dhKkME7N_OxKdZa0B0qtn6mIojwIO4lVTvpbmoDw/exec";
 const SHEET_ID   = "1iCxWMqO7oP5usA78OslpLfGPksgOLHw9T7m9XIAr_QI";
@@ -13,32 +13,77 @@ async function enviarParaSheets(form) {
     juros: form.juros, unificado: form.unificado, incred: form.incred,
     observacoes: form.observacoes || "—",
   };
- await fetch(SCRIPT_URL, {
-  method: "POST",
-  mode: "no-cors",
-  headers: { "Content-Type": "text/plain" },
-  body: JSON.stringify(dados),
-});
+  await fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify(dados),
+  });
 }
 
+// ─── TEMA ─────────────────────────────────────────────────────────────────────
 const T = {
   bg: "#0a0a0a", card: "#141414", cardBorda: "#1e1e1e",
   surface: "#1a1a1a", surface2: "#222222",
   verde: "#1a5c20", verdeVivo: "#22c55e",
   txt: "#f0f0f0", txtSub: "#888888", txtMute: "#555555",
   borda: "#2a2a2a", inputBg: "#111111", inputBorda: "#333333", erro: "#ef4444",
+  amarelo: "#fbbf24", amareloFundo: "#1a0a00", amareloBorda: "#b45309",
 };
 
 const PASSOS = ["Identificação", "Financeiro", "Datas", "Revisão"];
 const VAZIO = { data:"",uc:"",colaborador:"",solicitacao:"",parcelas:"",vencimento:"",intervalo:"",juros:"",unificado:"",incred:"",observacoes:"" };
 
+// ─── TOUR ─────────────────────────────────────────────────────────────────────
+const TOUR_STEPS = [
+  { icon:"👋", titulo:"Bem-vindo ao Lançamentos Guiados!", descricao:"Este sistema facilita o registro de parcelamentos e atualizações de vencimento diretamente na planilha Google Sheets. Veja como funciona em 4 passos rápidos.", cor:"#22c55e" },
+  { icon:"🪪", titulo:"Passo 1 — Identificação", descricao:"Informe o número da UC (Unidade Consumidora), o nome do colaborador responsável e o tipo de solicitação: Atualização de vencimento ou Parcelamento de débito.", cor:"#60a5fa" },
+  { icon:"💰", titulo:"Passo 2 — Financeiro", descricao:"Defina as condições: número de parcelas (se for parcelamento), se haverá juros, se é unificado e se é Incred. Atenção: se for Incred, uma ação extra será solicitada antes de continuar.", cor:"#fbbf24" },
+  { icon:"📅", titulo:"Passo 3 — Datas", descricao:"Informe a data do lançamento, a data do primeiro vencimento (ou nova data de vencimento no caso de atualização) e o intervalo entre parcelas, se aplicável.", cor:"#c084fc" },
+  { icon:"✅", titulo:"Passo 4 — Revisão e Envio", descricao:"Confira todos os dados preenchidos antes de enviar. Após confirmar, as informações vão direto para a planilha com status 'Não feito'. O responsável irá atualizar depois.", cor:"#22c55e" },
+];
+
+function Tour({ onConcluir }) {
+  const [step, setStep] = useState(0);
+  const atual = TOUR_STEPS[step];
+  const ultimo = step === TOUR_STEPS.length - 1;
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'Inter',system-ui,sans-serif" }}>
+      <div style={{ background:T.card, border:`1px solid ${T.cardBorda}`, borderRadius:20, padding:36, maxWidth:460, width:"100%", boxShadow:"0 30px 80px rgba(0,0,0,.7)" }}>
+        <div style={{ textAlign:"center", marginBottom:20 }}>
+          <div style={{ fontSize:52, marginBottom:8 }}>{atual.icon}</div>
+          <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:20 }}>
+            {TOUR_STEPS.map((_,i) => (
+              <div key={i} style={{ width:i===step?22:8, height:8, borderRadius:99, background:i<=step?atual.cor:T.surface2, transition:"all .3s" }} />
+            ))}
+          </div>
+        </div>
+        <h2 style={{ fontSize:18, fontWeight:800, color:T.txt, marginBottom:10, textAlign:"center", lineHeight:1.3 }}>{atual.titulo}</h2>
+        <p style={{ fontSize:14, color:T.txtSub, lineHeight:1.7, textAlign:"center", marginBottom:28 }}>{atual.descricao}</p>
+        <div style={{ display:"flex", gap:10 }}>
+          {step > 0 && (
+            <button onClick={()=>setStep(s=>s-1)} style={{ flex:1, padding:"11px", borderRadius:10, border:`1.5px solid ${T.borda}`, background:"transparent", color:T.txtSub, fontWeight:600, fontSize:14, cursor:"pointer" }}>← Voltar</button>
+          )}
+          <button onClick={()=>ultimo?onConcluir():setStep(s=>s+1)} style={{ flex:2, padding:"11px", borderRadius:10, background:ultimo?T.verdeVivo:T.surface2, color:ultimo?"#000":T.txt, fontWeight:700, fontSize:14, border:`1.5px solid ${ultimo?T.verdeVivo:T.borda}`, cursor:"pointer", transition:"all .2s" }}>
+            {ultimo?"Começar a usar 🚀":"Próximo →"}
+          </button>
+        </div>
+        {!ultimo && (
+          <button onClick={onConcluir} style={{ display:"block", margin:"14px auto 0", background:"none", border:"none", color:T.txtMute, fontSize:12, cursor:"pointer", textDecoration:"underline" }}>Pular apresentação</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
 function ProgressBar({ passo }) {
   return (
     <div style={{ marginBottom:28 }}>
       <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
         {PASSOS.map((p,i) => (
           <div key={p} style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:1 }}>
-            <div style={{ width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, transition:"all .3s", background: i<passo?T.verde:i===passo?T.verdeVivo:T.surface2, color:i<=passo?"#fff":T.txtMute, boxShadow:i===passo?"0 0 0 4px rgba(34,197,94,.18)":"none", border:i===passo?`2px solid ${T.verdeVivo}`:"2px solid transparent" }}>
+            <div style={{ width:34, height:34, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, transition:"all .3s", background:i<passo?T.verde:i===passo?T.verdeVivo:T.surface2, color:i<=passo?"#fff":T.txtMute, boxShadow:i===passo?"0 0 0 4px rgba(34,197,94,.18)":"none", border:i===passo?`2px solid ${T.verdeVivo}`:"2px solid transparent" }}>
               {i<passo?"✓":i+1}
             </div>
             <span style={{ fontSize:10, marginTop:5, color:i===passo?T.verdeVivo:i<passo?"#4ade80":T.txtMute, fontWeight:i===passo?700:400, textAlign:"center" }}>{p}</span>
@@ -90,14 +135,53 @@ function BotaoOpcao({ selecionado, onClick, children }) {
   return <button onClick={onClick} style={{ padding:"12px 8px", borderRadius:8, fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s", border:selecionado?`2px solid ${T.verdeVivo}`:`2px solid ${T.borda}`, background:selecionado?"#0d2e10":T.surface, color:selecionado?T.verdeVivo:T.txtSub }}>{children}</button>;
 }
 
+// ─── AVISO INCRED ─────────────────────────────────────────────────────────────
+function AvisoIncred() {
+  return (
+    <div style={{ background:T.amareloFundo, border:`1.5px solid ${T.amareloBorda}`, borderRadius:10, padding:"16px 18px", marginTop:4 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+        <span style={{ fontSize:18 }}>⚠</span>
+        <span style={{ fontSize:14, fontWeight:700, color:T.amarelo }}>Ação necessária antes de continuar</span>
+      </div>
+      <p style={{ fontSize:13, color:"#fde68a", margin:"0 0 10px", lineHeight:1.6 }}>Encaminhe um e-mail para:</p>
+      <div style={{ background:"#111", borderRadius:6, padding:"10px 12px", marginBottom:10 }}>
+        <p style={{ fontSize:12, color:T.amarelo, margin:"0 0 4px", fontWeight:600 }}>📧 victoria.paes@incredi.com.br</p>
+        <p style={{ fontSize:12, color:T.amarelo, margin:0, fontWeight:600 }}>📧 daniele.garcia@incredi.com.br</p>
+      </div>
+      <p style={{ fontSize:13, color:"#fde68a", margin:"0 0 8px", lineHeight:1.6 }}>Com os dados do cliente:</p>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+        {["Nome","CPF","UC","Telefone"].map(tag=>(
+          <span key={tag} style={{ background:"#292200", border:`1px solid ${T.amareloBorda}`, color:T.amarelo, fontSize:12, fontWeight:600, padding:"4px 10px", borderRadius:20 }}>{tag}</span>
+        ))}
+      </div>
+      <p style={{ fontSize:13, color:"#fde68a", margin:"0 0 14px", lineHeight:1.6 }}>Para que entrem em contato com esse cliente e realizem a negociação.</p>
+      <div style={{ background:"#111", borderRadius:8, padding:"10px 14px", border:`1px solid ${T.borda}` }}>
+        <p style={{ fontSize:12, color:T.txtSub, margin:0, textAlign:"center" }}>
+          🔒 Selecione <strong style={{ color:T.txt }}>Incred = Não</strong> para continuar o lançamento
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [passo,  setPasso]  = useState(0);
-  const [form,   setForm]   = useState({...VAZIO});
-  const [erros,  setErros]  = useState({});
-  const [status, setStatus] = useState("idle");
-  const [msgErro,setMsgErro]= useState("");
+  const [passo,    setPasso]    = useState(0);
+  const [form,     setForm]     = useState({...VAZIO});
+  const [erros,    setErros]    = useState({});
+  const [status,   setStatus]   = useState("idle");
+  const [msgErro,  setMsgErro]  = useState("");
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    const visto = localStorage.getItem("tour_concluido");
+    if (!visto) setShowTour(true);
+  }, []);
+
+  function concluirTour() { localStorage.setItem("tour_concluido","1"); setShowTour(false); }
 
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErros(e=>({...e,[k]:""})); };
+  const incredBloqueado = form.incred === "Sim";
 
   function validar() {
     const e = {};
@@ -121,7 +205,7 @@ export default function App() {
     return Object.keys(e).length===0;
   }
 
-  function avancar() { if (validar()) setPasso(p=>p+1); }
+  function avancar() { if (!incredBloqueado && validar()) setPasso(p=>p+1); }
   function voltar()  { setErros({}); setPasso(p=>p-1); }
 
   async function salvar() {
@@ -150,6 +234,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"'Inter',system-ui,sans-serif", padding:"32px 16px", color:T.txt }}>
+      {showTour && <Tour onConcluir={concluirTour} />}
       <div style={{ maxWidth:540, margin:"0 auto" }}>
         <div style={{ textAlign:"center", marginBottom:28 }}>
           <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:T.card, border:`1px solid ${T.borda}`, borderRadius:50, padding:"6px 18px", marginBottom:14 }}>
@@ -158,6 +243,9 @@ export default function App() {
           </div>
           <h1 style={{ fontSize:26, fontWeight:800, color:T.txt, margin:0 }}>Novo Lançamento</h1>
           <p style={{ color:T.txtSub, fontSize:13, marginTop:6 }}>Responda as perguntas — os dados vão direto para a planilha.</p>
+          <button onClick={()=>setShowTour(true)} style={{ marginTop:8, background:"none", border:`1px solid ${T.borda}`, color:T.txtMute, fontSize:11, padding:"4px 12px", borderRadius:20, cursor:"pointer" }}>
+            ? Ver apresentação novamente
+          </button>
         </div>
 
         <div style={{ background:T.card, borderRadius:16, padding:28, border:`1px solid ${T.cardBorda}`, boxShadow:"0 20px 60px rgba(0,0,0,.5)" }}>
@@ -205,12 +293,18 @@ export default function App() {
                   <Select value={form.unificado} onChange={v=>set("unificado",v)} options={["Sim","Não"]} />
                 </Campo>
                 <Campo label="Incred?" obrigatorio erro={erros.incred}>
-                  <Select value={form.incred} onChange={v=>set("incred",v)} options={["Sim","Não"]} />
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                    <BotaoOpcao selecionado={form.incred==="Sim"} onClick={()=>set("incred","Sim")}>✓ Sim</BotaoOpcao>
+                    <BotaoOpcao selecionado={form.incred==="Não"} onClick={()=>set("incred","Não")}>✗ Não</BotaoOpcao>
+                  </div>
                 </Campo>
               </div>
-              <Campo label="Observações" dica="Informações adicionais (opcional).">
-                <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Ex: Cliente solicitou prazo estendido..." style={{ ...inputStyle, resize:"vertical", minHeight:70 }} />
-              </Campo>
+              {incredBloqueado && <AvisoIncred />}
+              {!incredBloqueado && (
+                <Campo label="Observações" dica="Informações adicionais (opcional).">
+                  <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Ex: Cliente solicitou prazo estendido..." style={{ ...inputStyle, resize:"vertical", minHeight:70 }} />
+                </Campo>
+              )}
             </div>
           )}
 
@@ -262,7 +356,9 @@ export default function App() {
               <button onClick={voltar} style={{ flex:1, padding:12, borderRadius:10, border:`1.5px solid ${T.borda}`, background:"transparent", color:T.txtSub, fontWeight:600, fontSize:14, cursor:"pointer" }}>← Voltar</button>
             )}
             {passo<PASSOS.length-1
-              ? <button onClick={avancar} style={{ flex:2, padding:12, borderRadius:10, background:T.verdeVivo, color:"#000", fontWeight:700, fontSize:14, border:"none", cursor:"pointer" }}>Continuar →</button>
+              ? <button onClick={avancar} disabled={incredBloqueado} style={{ flex:2, padding:12, borderRadius:10, background:incredBloqueado?T.surface2:T.verdeVivo, color:incredBloqueado?T.txtMute:"#000", fontWeight:700, fontSize:14, border:"none", cursor:incredBloqueado?"not-allowed":"pointer", opacity:incredBloqueado?0.5:1 }}>
+                  Continuar →
+                </button>
               : <button onClick={salvar} disabled={status==="salvando"} style={{ flex:2, padding:12, borderRadius:10, background:status==="salvando"?T.surface2:T.verde, color:"#fff", fontWeight:700, fontSize:14, border:`1px solid ${T.verdeVivo}`, cursor:status==="salvando"?"not-allowed":"pointer", opacity:status==="salvando"?0.7:1 }}>
                   {status==="salvando"?"⏳ Enviando...":"✓ Enviar para Planilha"}
                 </button>
