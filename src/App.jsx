@@ -13,6 +13,7 @@ async function enviarParaSheets(form) {
     intervalo: form.solicitacao === "Parcelamento" ? form.intervalo : "—",
     juros: form.juros, unificado: form.unificado, incred: form.incred,
     observacoes: form.observacoes || "—",
+    status: form.statusOverride || "Não feito",
   };
   await fetch(SCRIPT_URL, {
     method: "POST",
@@ -39,7 +40,7 @@ const TOUR_STEPS = [
     icon:"👋",
     titulo:"Bem-vindo!",
     cor:"#22c55e",
-    descricao:"Este sistema guia você no registro de parcelamentos e atualizações. Rápido, sem erro e direto na planilha. Veja o que vai preencher:",
+    descricao:"Este sistema guia você no registro de parcelamentos e atualizações de vencimento. Rápido, sem erro e direto na planilha. Veja o que vai preencher:",
     campos: null,
     dica: null,
   },
@@ -47,11 +48,11 @@ const TOUR_STEPS = [
     icon:"🪪",
     titulo:"Passo 1 — Identificação",
     cor:"#60a5fa",
-    descricao:"Aqui você informa quem está fazendo o lançamento e o que se trata.",
+    descricao:"Informe quem está fazendo o lançamento e o que o cliente está pedindo.",
     campos: [
       { label:"Colaborador", exemplo:"Ex: João Silva", info:"Seu nome — não precisa ser completo." },
       { label:"UC", exemplo:"Ex: 54321", info:"Número da Unidade Consumidora do cliente." },
-      { label:"Solicitação", exemplo:"Atualização  ou  Parcelamento", info:"O que o cliente está pedindo." },
+      { label:"Solicitação", exemplo:"🔄 Atualização  ou  📋 Parcelamento", info:"Atualização = mudar vencimento. Parcelamento = dividir débito." },
     ],
     dica: null,
   },
@@ -59,24 +60,25 @@ const TOUR_STEPS = [
     icon:"💰",
     titulo:"Passo 2 — Financeiro",
     cor:"#fbbf24",
-    descricao:"Aqui você define as condições do acordo com o cliente.",
+    descricao:"Defina as condições financeiras do acordo com o cliente.",
     campos: [
-      { label:"Parcelas", exemplo:"Ex: 3 (só para parcelamento)", info:"Em quantas vezes vai ser dividido." },
+      { label:"Parcelas", exemplo:"Ex: 3x  (só parcelamento)", info:"Em quantas vezes o débito será dividido." },
       { label:"Juros", exemplo:"Sim  ou  Não", info:"Se o débito tem juros aplicados." },
-      { label:"Unificado", exemplo:"Sim  ou  Não", info:"Se as faturas foram unificadas." },
-      { label:"Incred", exemplo:"Sim  ou  Não", info:"Se for Sim, um e-mail deve ser enviado antes de continuar." },
+      { label:"Boleto vinculado à Distribuidora?", exemplo:"Sim  ou  Não", info:"Se Sim: abra um ticket de desmembramento e anote nas Observações. O botão ficará bloqueado até selecionar Não." },
+      { label:"Incred?", exemplo:"Sim  ou  Não", info:"Se Sim: envie e-mail para a Incred com dados do cliente antes de continuar." },
+      { label:"Observações", exemplo:"Ex: Julho/2025. Ticket aberto.", info:"Informe o MÊS referente e qualquer info importante." },
     ],
-    dica: "⚠ Se Incred = Sim, você precisará enviar um e-mail com os dados do cliente antes de prosseguir.",
+    dica: "⚠ Boleto vinculado = Sim ou Incred = Sim bloqueiam o avanço até a ação ser concluída.",
   },
   {
     icon:"📅",
     titulo:"Passo 3 — Datas",
     cor:"#c084fc",
-    descricao:"Aqui você define quando o lançamento acontece e quando vence.",
+    descricao:"Defina as datas do lançamento.",
     campos: [
-      { label:"Data do Lançamento", exemplo:"Ex: 23/06/2025", info:"Hoje — dia em que está registrando." },
-      { label:"Data de Vencimento / 1ª Parcela", exemplo:"Ex: 10/07/2025", info:"Quando o cliente vai pagar." },
-      { label:"Intervalo (parcelamento)", exemplo:"Ex: 30 dias", info:"De quanto em quanto tempo vence cada parcela." },
+      { label:"Data do Lançamento", exemplo:"Preenchida automaticamente com hoje", info:"Você pode alterar se necessário." },
+      { label:"Nova Data de Vencimento", exemplo:"Ex: 10/07/2025  (atualização)", info:"Nova data que o cliente vai pagar." },
+      { label:"Data da Primeira Parcela", exemplo:"Ex: 10/07/2025  (parcelamento)", info:"Quando vence a primeira parcela." },
     ],
     dica: null,
   },
@@ -84,12 +86,12 @@ const TOUR_STEPS = [
     icon:"✅",
     titulo:"Passo 4 — Revisão e Envio",
     cor:"#22c55e",
-    descricao:"Você vê um resumo de tudo antes de confirmar. Depois de enviar, os dados vão direto para a planilha com status Não feito — o responsável atualiza depois.",
+    descricao:"Confira tudo antes de enviar. Os dados vão direto para a planilha com status Não feito — o responsável atualiza depois.",
     campos: [
-      { label:"Resumo completo", exemplo:"UC · Colaborador · Parcelas · Datas...", info:"Tudo aparece aqui para você conferir." },
-      { label:"Status automático", exemplo:"Não feito", info:"O responsável irá atualizar para Feito ou Pendente." },
+      { label:"Resumo completo", exemplo:"Nome · UC · Tipo · Parcelas · Datas...", info:"Tudo listado para você revisar antes de confirmar." },
+      { label:"Status automático", exemplo:"Não feito", info:"O responsável irá atualizar para Feito ou Pendente na planilha." },
     ],
-    dica: "✓ Após enviar, aparece um botão para abrir a planilha direto.",
+    dica: "✓ Após enviar, aparece um botão para abrir a planilha Google Sheets direto.",
   },
 ];
 
@@ -213,6 +215,23 @@ function BotaoOpcao({ selecionado, onClick, children }) {
   return <button onClick={onClick} style={{ padding:"12px 8px", borderRadius:8, fontWeight:700, fontSize:14, cursor:"pointer", transition:"all .2s", border:selecionado?`2px solid ${T.verdeVivo}`:`2px solid ${T.borda}`, background:selecionado?"#0d2e10":T.surface, color:selecionado?T.verdeVivo:T.txtSub }}>{children}</button>;
 }
 
+function AvisoDesmembramento() {
+  return (
+    <div style={{ background:"#0a1628", border:"1.5px solid #1e40af", borderRadius:10, padding:"16px 18px", marginTop:4, marginBottom:4 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+        <span style={{ fontSize:18 }}>🎫</span>
+        <span style={{ fontSize:14, fontWeight:700, color:"#60a5fa" }}>Ação necessária antes de continuar</span>
+      </div>
+      <p style={{ fontSize:13, color:"#93c5fd", margin:"0 0 8px", lineHeight:1.6 }}>
+        Abrir ticket para <strong>desmembramento do boleto</strong> que estiver como unificado com a distribuidora (CEMIG).
+      </p>
+      <p style={{ fontSize:13, color:"#93c5fd", margin:"0 0 14px", lineHeight:1.6 }}>
+        Em seguida, coloque nas <strong>Observações</strong> que está em andamento o desmembramento.
+      </p>
+    </div>
+  );
+}
+
 function AvisoIncred() {
   return (
     <div style={{ background:T.amareloFundo, border:`1.5px solid ${T.amareloBorda}`, borderRadius:10, padding:"16px 18px", marginTop:4 }}>
@@ -250,8 +269,15 @@ export default function App() {
   const [showTour, setShowTour] = useState(true);
 
   function concluirTour() { setShowTour(false); }
+
+  useEffect(() => {
+    const hoje = new Date().toISOString().split("T")[0];
+    setForm(f => ({ ...f, data: hoje }));
+  }, []);
+
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErros(e=>({...e,[k]:""})); };
   const incredBloqueado = form.incred === "Sim";
+
 
   function validar() {
     const e = {};
@@ -269,7 +295,7 @@ export default function App() {
     if (passo===2) {
       if (!form.data)       e.data       = "Informe a data do lançamento.";
       if (!form.vencimento) e.vencimento = form.solicitacao==="Atualização" ? "Informe a nova data de vencimento." : "Informe a data da primeira parcela.";
-      if (form.solicitacao==="Parcelamento" && !form.intervalo) e.intervalo = "Informe o intervalo entre parcelas.";
+
     }
     setErros(e);
     return Object.keys(e).length===0;
@@ -280,7 +306,8 @@ export default function App() {
 
   async function salvar() {
     setStatus("salvando");
-    try { await enviarParaSheets(form); setStatus("sucesso"); }
+    const statusFinal = form.unificado === "Sim" ? "Pendente" : "Não feito";
+    try { await enviarParaSheets({...form, statusOverride: statusFinal}); setStatus("sucesso"); }
     catch(err) { setMsgErro(err.message||"Erro ao conectar."); setStatus("erro"); }
   }
 
@@ -288,7 +315,7 @@ export default function App() {
 
   if (status==="sucesso") return (
     <div style={{ minHeight:"100vh", background:T.bg, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:20, position:"relative", overflow:"hidden" }}>
-      <img src={LOGO_URL} alt="" style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:"100vw", height:"100vh", objectFit:"cover", opacity:0.13, filter:"grayscale(100%) brightness(0.9) sepia(1) hue-rotate(90deg) saturate(5)", pointerEvents:"none", zIndex:0 }} />
+      <img src={LOGO_URL} alt="" style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:"87vw", height:"87vh", objectFit:"contain", opacity:0.1, filter:"grayscale(100%) brightness(0.5) sepia(1) hue-rotate(90deg) saturate(4)", pointerEvents:"none", zIndex:0 }} />
       <div style={{ position:"relative", zIndex:1, background:T.card, border:`1px solid ${T.cardBorda}`, borderRadius:16, padding:40, maxWidth:440, width:"100%", textAlign:"center", boxShadow:"0 20px 60px rgba(0,0,0,.5)" }}>
         <div style={{ fontSize:60, marginBottom:16 }}>✅</div>
         <h2 style={{ fontSize:22, fontWeight:800, color:T.txt, marginBottom:8 }}>Lançamento Enviado!</h2>
@@ -307,7 +334,7 @@ export default function App() {
     <div style={{ minHeight:"100vh", background:T.bg, fontFamily:"'Inter',system-ui,sans-serif", padding:"32px 16px", color:T.txt, position:"relative", overflow:"hidden" }}>
 
       {/* MARCA D'ÁGUA */}
-      <img src={LOGO_URL} alt="" style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:"100vw", height:"100vh", objectFit:"cover", opacity:0.13, filter:"grayscale(100%) brightness(0.9) sepia(1) hue-rotate(90deg) saturate(5)", pointerEvents:"none", zIndex:0 }} />
+      <img src={LOGO_URL} alt="" style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:"87vw", height:"87vh", objectFit:"contain", opacity:0.1, filter:"grayscale(100%) brightness(0.5) sepia(1) hue-rotate(90deg) saturate(4)", pointerEvents:"none", zIndex:0 }} />
 
       {showTour && <Tour onConcluir={concluirTour} />}
 
@@ -337,7 +364,7 @@ export default function App() {
               <Campo label="Colaborador" obrigatorio dica="Nome do colaborador responsável." erro={erros.colaborador}>
                 <Input value={form.colaborador} onChange={v=>set("colaborador",v)} placeholder="Seu nome" />
               </Campo>
-              <Campo label="UC" obrigatorio dica="Digite o número da UC." erro={erros.uc}>
+              <Campo label="UC / Instalação" obrigatorio dica="Digite o número da UC ou Instalação do cliente." erro={erros.uc}>
                 <Input value={form.uc} onChange={v=>set("uc",v)} placeholder="Ex: 12345" />
               </Campo>
               <Campo label="Solicitação" obrigatorio erro={erros.solicitacao}>
@@ -350,7 +377,7 @@ export default function App() {
           )}
 
           {passo===1 && (
-            <div>
+            <div style={{ maxHeight:"60vh", overflowY:"auto", paddingRight:4 }}>
               <Alerta tipo="info">Preencha as condições financeiras do lançamento.</Alerta>
               {form.solicitacao==="Parcelamento" && (
                 <Campo label="Parcelas" obrigatorio erro={erros.parcelas} dica="Número de parcelas (1 = à vista).">
@@ -364,21 +391,23 @@ export default function App() {
                   <BotaoOpcao selecionado={form.juros==="Não"} onClick={()=>set("juros","Não")}>✗ Não</BotaoOpcao>
                 </div>
               </Campo>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                <Campo label="Unificado?" obrigatorio erro={erros.unificado}>
-                  <Select value={form.unificado} onChange={v=>set("unificado",v)} options={["Sim","Não"]} />
-                </Campo>
-                <Campo label="Incred?" obrigatorio erro={erros.incred}>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                    <BotaoOpcao selecionado={form.incred==="Sim"} onClick={()=>set("incred","Sim")}>✓ Sim</BotaoOpcao>
-                    <BotaoOpcao selecionado={form.incred==="Não"} onClick={()=>set("incred","Não")}>✗ Não</BotaoOpcao>
-                  </div>
-                </Campo>
-              </div>
+              <Campo label="Existe algum Boleto vinculado com a Distribuidora?" obrigatorio erro={erros.unificado}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                  <BotaoOpcao selecionado={form.unificado==="Sim"} onClick={()=>set("unificado","Sim")}>✓ Sim</BotaoOpcao>
+                  <BotaoOpcao selecionado={form.unificado==="Não"} onClick={()=>set("unificado","Não")}>✗ Não</BotaoOpcao>
+                </div>
+              </Campo>
+              {form.unificado==="Sim" && <AvisoDesmembramento />}
+              <Campo label="Incred?" obrigatorio erro={erros.incred}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                  <BotaoOpcao selecionado={form.incred==="Sim"} onClick={()=>set("incred","Sim")}>✓ Sim</BotaoOpcao>
+                  <BotaoOpcao selecionado={form.incred==="Não"} onClick={()=>set("incred","Não")}>✗ Não</BotaoOpcao>
+                </div>
+              </Campo>
               {incredBloqueado && <AvisoIncred />}
               {!incredBloqueado && (
-                <Campo label="Observações" dica="Informações adicionais (opcional).">
-                  <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Ex: Cliente solicitou prazo estendido..." style={{ ...inputStyle, resize:"vertical", minHeight:70 }} />
+                <Campo label="Observações" dica="Informe o MÊS referente à parcela ou atualização e qualquer outra informação IMPORTANTE (ex: aberto ticket de desmembramento).">
+                  <textarea value={form.observacoes} onChange={e=>set("observacoes",e.target.value)} placeholder="Ex: Referente ao mês de Julho/2025. Aberto ticket de desmembramento." style={{ ...inputStyle, resize:"vertical", minHeight:80 }} />
                 </Campo>
               )}
             </div>
@@ -395,11 +424,7 @@ export default function App() {
                   <Input type="date" value={form.vencimento} onChange={v=>set("vencimento",v)} />
                 </Campo>
               </div>
-              {form.solicitacao==="Parcelamento" && (
-                <Campo label="Intervalo entre Parcelas (dias)" obrigatorio dica="Digite o número de dias entre cada parcela." erro={erros.intervalo}>
-                  <Input type="number" value={form.intervalo} onChange={v=>set("intervalo",v)} placeholder="Ex: 30" min="1" />
-                </Campo>
-              )}
+
               <Alerta tipo="aviso">O status será registrado como <strong>Não feito</strong> automaticamente. O responsável atualizará na planilha.</Alerta>
             </div>
           )}
@@ -411,11 +436,11 @@ export default function App() {
               <div style={{ background:T.surface, borderRadius:10, padding:16, marginBottom:14, border:`1px solid ${T.borda}` }}>
                 {[
                   ["UC",form.uc],["Colaborador",form.colaborador],["Solicitação",form.solicitacao],
-                  ...(form.solicitacao==="Parcelamento"?[["Parcelas",`${form.parcelas}x`],["Intervalo",`${form.intervalo} dias`]]:[]),
-                  ["Juros",form.juros],["Unificado",form.unificado],["Incred",form.incred],
+                  ...(form.solicitacao==="Parcelamento"?[["Parcelas",`${form.parcelas}x`]]:[]),
+                  ["Juros",form.juros],["Boleto Distribuidora",form.unificado],["Incred",form.incred],
                   ["Data do Lançamento",form.data],
                   [form.solicitacao==="Atualização"?"Nova Data de Vencimento":"Data da 1ª Parcela",form.vencimento],
-                  ["Status","Não feito (padrão)"],
+                  ["Status", form.unificado==="Sim" ? "Pendente (boleto vinculado)" : "Não feito (padrão)"],
                   ...(form.observacoes?[["Observações",form.observacoes]]:[]),
                 ].map(([k,v])=>(
                   <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:13, borderBottom:`1px solid ${T.borda}`, padding:"7px 0", gap:8 }}>
