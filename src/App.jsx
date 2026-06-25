@@ -76,7 +76,7 @@ const TOUR_STEPS = [
     cor:"#c084fc",
     descricao:"Defina as datas do lançamento.",
     campos: [
-      { label:"Data do Lançamento", exemplo:"Preenchida automaticamente com hoje", info:"Você pode alterar se necessário." },
+      { label:"Data de Hoje", exemplo:"Preenchida automaticamente com hoje", info:"Você pode alterar se necessário." },
       { label:"Nova Data de Vencimento", exemplo:"Ex: 10/07/2025  (atualização)", info:"Nova data que o cliente vai pagar." },
       { label:"Data da Primeira Parcela", exemplo:"Ex: 10/07/2025  (parcelamento)", info:"Quando vence a primeira parcela." },
     ],
@@ -417,7 +417,7 @@ export default function App() {
             <div>
               <Alerta tipo="info">Defina as datas do lançamento.</Alerta>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-                <Campo label="Data do Lançamento" obrigatorio erro={erros.data}>
+                <Campo label="Data de Hoje" obrigatorio erro={erros.data}>
                   <Input type="date" value={form.data} onChange={v=>set("data",v)} />
                 </Campo>
                 <Campo label={form.solicitacao==="Atualização" ? "Nova Data de Vencimento" : "Data da Primeira Parcela"} obrigatorio erro={erros.vencimento}>
@@ -438,7 +438,7 @@ export default function App() {
                   ["UC",form.uc],["Colaborador",form.colaborador],["Solicitação",form.solicitacao],
                   ...(form.solicitacao==="Parcelamento"?[["Parcelas",`${form.parcelas}x`]]:[]),
                   ["Juros",form.juros],["Boleto Distribuidora",form.unificado],["Incred",form.incred],
-                  ["Data do Lançamento",form.data],
+                  ["Data de Hoje",form.data],
                   [form.solicitacao==="Atualização"?"Nova Data de Vencimento":"Data da 1ª Parcela",form.vencimento],
                   ["Status", form.unificado==="Sim" ? "Pendente (boleto vinculado)" : "Não feito (padrão)"],
                   ...(form.observacoes?[["Observações",form.observacoes]]:[]),
